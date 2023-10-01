@@ -41,31 +41,34 @@ const autoScroll = async (page: Page)=>{
 
 const getProductData = async (link: string)=>{
   const browser = await puppeteer.launch({
-    headless: 'new',
+    headless: false,
     args: [`--window-size=1440,800`] 
   })
   try {
     const page = await browser.newPage()
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36');
-    await page.goto(link)
-    await page.evaluate(()=>{
-      const name= document.querySelector('h1[data-testid="lblPDPDetailProductName"]') as HTMLElement
-      const store= document.querySelector("div[@data-testid='pdpShopCredibilityRow']")
-      const storeName = store?.querySelector("h2")
-      const price = document.querySelector('.price') as HTMLElement
-      const star= document.querySelector('.score') as HTMLElement
-      const sold= document.querySelector('div[data-testid="lblPDPDetailProductSoldCounter"]') as HTMLElement
-      const description= document.querySelector('div[data-testid="lblPDPDescriptionProduk"]') as HTMLElement
+    await page.goto(link,{waitUntil: 'networkidle0'})
+    const results = await page.evaluate(()=>{
+      const name= document.querySelector('h1[data-testid="lblPDPDetailProductName"]')?.textContent
+      const store= document.querySelector("div[data-testid='pdpShopCredibilityRow']")
+      const storeName = store?.querySelector("h2")?.textContent
+      const price = document.querySelector('.price')
+      const star= document.querySelector('.score') 
+      const sold= document.querySelector('div[data-testid="lblPDPDetailProductSoldCounter"]')
+      const description= document.querySelector('div[data-testid="lblPDPDescriptionProduk"]')
       return {
-        name: name.textContent,
-        store: storeName?.textContent,
-        price: price.textContent,
-        star: star.textContent,
-        sold: sold.textContent,
-        description:  description.textContent
+        name: name,
+        store: storeName,
+        price: price?.textContent,
+        star: star?.textContent,
+        sold: sold?.textContent,
+        description:  description?.textContent
       } 
     })
+    browser.close()
+    return results
   } catch (e) {
+    console.log(e)
     browser.close()
   }
 
@@ -73,20 +76,20 @@ const getProductData = async (link: string)=>{
 
 const getQueryData = async (link:string)=> {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: 'new',
     args: [`--window-size=1440,800`] 
   })
   try {
     const page = await browser.newPage()
     await page.setViewport({
       width: 2500,
-      height: 3000
+      height: 800
     })
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36');
+    let counter = 1
     link = `https://www.tokopedia.com/search?st=product&q=${link}`
     let data:products[] = []
-    await page.goto(link, {timeout: 60000, waitUntil: 'networkidle0'});
-    await autoScroll(page)
+    await page.goto(link, {timeout: 60000, waitUntil: 'networkidle2'});
     let productExist = false
     try {
       await page.waitForXPath(`.//div[contains(text(),'Oops, produk nggak ditemukan')]`)
@@ -96,35 +99,38 @@ const getQueryData = async (link:string)=> {
     } catch (error) {
       productExist = true
     }
-    if(productExist){
-      let nextPageBtn = await page.$('button[aria-label="Laman berikutnya"]')
-      let isFirst = true
-      while(nextPageBtn||isFirst){
-        await page.waitForXPath(".//div[@data-testid='master-product-card']")
-          const productList = await page.evaluate(()=>{
-          const productWrapper = document.querySelector("div[data-testid='divSRPContentProducts']")
-          if(!productWrapper){
-            return []
-          }
-          const products = productWrapper.querySelectorAll("div[data-testid='master-product-card']")
-          const elName = document.querySelectorAll("div[data-testid='spnSRPProdName']")
-          const price = document.querySelectorAll("div[data-testid='spnSRPProdPrice']")
-          let items: products[] = [] as products[]
-          for(let i = 0; i<products.length;i++){
-            const span = products[i].querySelectorAll('span')
-            items.push({
-              name: elName[i].textContent,
-              price: price[i].textContent,
-              star: span.length ? span[span.length-3].innerText: '',
-              sold: span.length ? span[span.length-1].innerText: ''
-            })
-          }
-          return items
-        })
-        data = data.concat(productList)
-        isFirst =false
-        await nextPageBtn?.click()
-        nextPageBtn = await page.$('button[aria-label="Laman berikutnya"]')
+    while(productExist){
+      await autoScroll(page)
+      await page.waitForXPath(".//div[@data-testid='master-product-card']")
+        const productList = await page.evaluate(()=>{
+        const productWrapper = document.querySelector("div[data-testid='divSRPContentProducts']")
+        if(!productWrapper){
+          return []
+        }
+        const products = productWrapper.querySelectorAll("div[data-testid='master-product-card']")
+        const elName = document.querySelectorAll("div[data-testid='spnSRPProdName']")
+        const price = document.querySelectorAll("div[data-testid='spnSRPProdPrice']")
+        let items: products[] = [] as products[]
+        for(let i = 0; i<products.length;i++){
+          const span = products[i].querySelectorAll('span')
+          items.push({
+            name: elName[i].textContent,
+            price: price[i].textContent,
+            star: span[span.length-3] ? span[span.length-3].innerText: '',
+            sold: span[span.length-1] ? span[span.length-1].innerText: ''
+          })
+        }
+        return items
+      })
+      data = data.concat(productList)
+      counter+=1
+      await page.goto(link+`&page=${counter}`, {timeout: 60000, waitUntil: 'networkidle0'});
+      try {
+        await page.waitForXPath(`.//div[contains(text(),'Oops, produk nggak ditemukan')]`)
+        productExist = false
+        browser.close()
+      } catch (error) {
+        productExist = true
       }
     }
     browser.close()
@@ -191,16 +197,16 @@ const getStoreData =async (link: string)=>{
 }
 
 const main=()=> {
- //const stores = fetchStoreData()
- //let data:products[] = []
- //stores.forEach(async store=>{
- //   const results = await getStoreData(store.link_shop)
- //   if(results){
- //     data.concat(results)
- //   }
- //   console.log(results)
- //   return results
- //})
+ const stores = fetchStoreData()
+ let data:products[] = []
+ stores.forEach(async store=>{
+    const results = await getStoreData(store.link_shop)
+    if(results){
+      data.concat(results)
+    }
+    console.log(results)
+    return results
+ })
  
  const queries = fetchQueryData()
  queries.forEach(async q=>{
@@ -209,12 +215,12 @@ const main=()=> {
     return results
  })
  
- //const products = fetchProductData()
- //products.forEach(async q=>{
- //   const results = await getProductData(q.link)
- //   console.log(results)
- //   return results
- //})
+ const products = fetchProductData()
+ products.forEach(async q=>{
+    const results = await getProductData(q.link)
+    console.log(results)
+    return results
+ })
 }
 
 main()

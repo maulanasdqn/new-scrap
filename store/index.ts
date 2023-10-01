@@ -46,14 +46,6 @@ export const fetchQueryData = ()=>{
   //)
   let data = {
   "rows": [
-      {
-      "id": 1,
-      "name": "kondom durex"
-    },
-    {
-      "id": 2,
-      "name": "kondom fiesta"
-    },
     {
       "id": 3,
       "name": "xiaomi redmi note 9"
