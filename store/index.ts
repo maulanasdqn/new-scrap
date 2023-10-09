@@ -2,6 +2,8 @@ export const fetchStoreData = ()=>{
   //fetch(url).then(
   //  res => {data=res}
   //)
+  //
+  //Replace dummy data with fetch data 
   let data = {
   "rows": [
     {
@@ -44,6 +46,7 @@ export const fetchQueryData = ()=>{
   //fetch(url).then(
   //  res => {data=res}
   //)
+  //Replace dummy data with fetch data 
   let data = {
   "rows": [
     {
@@ -59,6 +62,7 @@ export const fetchProductData = ()=>{
   //fetch(url).then(
   //  res => {data=res}
   //)
+  //Replace dummy data with fetch data 
   let data = {
   "rows": [
     {

@@ -8,15 +8,6 @@ type products={
   sold: string|null;
 }
 
-type product={
-  name: string;
-  store: string;
-  price: string;
-  star: string;
-  sold: string;
-  description: string;
-}
-
 const autoScroll = async (page: Page)=>{
   await page.evaluate(async ()=>{
     await new Promise((resolve)=>{
@@ -204,6 +195,7 @@ const main=()=> {
     if(results){
       data.concat(results)
     }
+    //result will be send to post request
     console.log(results)
     return results
  })
@@ -211,6 +203,7 @@ const main=()=> {
  const queries = fetchQueryData()
  queries.forEach(async q=>{
     const results = await getQueryData(q.name)
+    //result will be send to post request
     console.log(results)
     return results
  })
@@ -218,6 +211,7 @@ const main=()=> {
  const products = fetchProductData()
  products.forEach(async q=>{
     const results = await getProductData(q.link)
+    //result will be send to post request
     console.log(results)
     return results
  })
